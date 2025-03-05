@@ -27,6 +27,9 @@ original_bild = pygame.image.load("assets/sprites/SpaceShip.png")
 backgrund_mörkblå = pygame.image.load("assets/backgrounds/bg.png")
 backgrund_stjärnor = pygame.image.load("assets/backgrounds/stars-A.png")
 sprite_jetstråle = pygame.image.load("assets/sprites/fire.png") 
+sprite_skott = pygame.image.load("assets/sprites/bullet.png")
+
+skott_lista = []
 
 backgrund_y = 0
 
@@ -34,10 +37,23 @@ sprite_spelare = pygame.transform.scale(original_bild, (original_bild.get_width(
 
 spelare_x = skärmens_bredd // 2 - 120
 spelare_y = skärmens_höjd - 200
-spelarens_hastighet = 2
+spelarens_hastighet = 3
+jetstråle_x = spelare_x + 25
+jetstråle_y = spelare_y - 25
 
-jetstråle_x = spelare_x + 40
-jetstråle_y = spelare_y + 100
+class skott:
+
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.hastighet = 10
+        self.bild = pygame.transform.scale(sprite_skott, (sprite_skott.get_width() // 2, sprite_skott.get_height() // 2))
+
+    def flytta(self):
+        self.y = self.y - self.hastighet
+
+    def rita(self, skärm):
+        skärm.blit(self.bild, (self.x, self.y))
 
 while (spelet_körs == True):
 
@@ -58,16 +74,37 @@ while (spelet_körs == True):
         backgrund_y = 0
 
     skärm.blit(sprite_spelare, (spelare_x, spelare_y))
+
+    skärm.blit(sprite_jetstråle, (jetstråle_x, jetstråle_y))
+
+    jetstråle_x = spelare_x + (sprite_spelare.get_width() // 2) - (sprite_jetstråle.get_width() // 2)
+    jetstråle_y = spelare_y + sprite_spelare.get_height() - (sprite_jetstråle.get_height() // 2)
+
     pygame.display.update()
 
     keys = pygame.key.get_pressed()
     if keys[pygame.K_a] and spelare_x > 0:
         spelare_x = spelare_x - spelarens_hastighet
+        jetstråle_x = jetstråle_x - spelarens_hastighet
     if keys[pygame.K_d] and spelare_x < skärmens_bredd - sprite_spelare.get_width():
         spelare_x = spelare_x + spelarens_hastighet
+        jetstråle_x = jetstråle_x + spelarens_hastighet
     if keys[pygame.K_w] and spelare_y > 0:
         spelare_y = spelare_y - spelarens_hastighet
+        jetstråle_y = jetstråle_y - spelarens_hastighet
     if keys[pygame.K_s] and spelare_y < skärmens_höjd - sprite_spelare.get_width() + 26:
         spelare_y = spelare_y + spelarens_hastighet
+        jetstråle_y = jetstråle_y + spelarens_hastighet
+    if keys[pygame.K_SPACE]:
+        nytt_skott = skott(spelare_x + 20, spelare_y)
+        skott_lista.append(nytt_skott)
+for skott in reversed(skott_lista):
+    skott.flytta()
+    skott.rita(skärm)
+
+    if skott.y < -100:
+        skott_lista.remove(skott)
+
+pygame.display.update()
 
 pygame.quit()
