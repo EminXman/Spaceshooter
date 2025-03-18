@@ -41,13 +41,13 @@ spelarens_hastighet = 3
 jetstråle_x = spelare_x + 25
 jetstråle_y = spelare_y - 25
 
-class skott:
+class Skott:
 
     def __init__(self, x, y):
         self.x = x
         self.y = y
         self.hastighet = 10
-        self.bild = pygame.transform.scale(sprite_skott, (sprite_skott.get_width() // 2, sprite_skott.get_height() // 2))
+        self.bild = sprite_skott
 
     def flytta(self):
         self.y = self.y - self.hastighet
@@ -96,15 +96,16 @@ while (spelet_körs == True):
         spelare_y = spelare_y + spelarens_hastighet
         jetstråle_y = jetstråle_y + spelarens_hastighet
     if keys[pygame.K_SPACE]:
-        nytt_skott = skott(spelare_x + 20, spelare_y)
-        skott_lista.append(nytt_skott)
-for skott in reversed(skott_lista):
-    skott.flytta()
-    skott.rita(skärm)
+        print(type(Skott))
+        skott_lista.append(Skott(spelare_x + 20, spelare_y))
 
-    if skott.y < -100:
-        skott_lista.remove(skott)
+    for skott_obj in reversed(skott_lista):
+        skott_obj.flytta()
+        skott_obj.rita(skärm)
+    
+    if skott_obj.y < -100:
+        skott_lista.remove(skott_obj)
 
-pygame.display.update()
+    pygame.display.update()
 
 pygame.quit()
