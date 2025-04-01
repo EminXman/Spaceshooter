@@ -1,8 +1,6 @@
 import pygame
 import random
 
-from scripts.partikeleffekt import Partikel
-
 # Skärmstorlek
 skärmens_bredd = 800
 skärmens_höjd = 600
@@ -13,7 +11,7 @@ pygame.display.set_caption("Space Shooter")
 
 # Spelstatus
 spelet_körs = True
-spelare_1_exploderat = False  # Definerar variabel för att spåra om spelaren har exploderat
+spelare_1_exploderat = False  # Variabel för att spåra om spelaren har exploderat
 paus = 0
 
 # Ladda bilder
@@ -23,6 +21,12 @@ backgrund_stjärnor = pygame.image.load("assets/backgrounds/stars-A.png")
 sprite_jetstråle = pygame.image.load("assets/sprites/fire.png")
 sprite_skott = pygame.image.load("assets/sprites/bullet.png")
 sprite_ateroid_liten = pygame.image.load("assets/sprites/small-A.png")
+
+pygame.mixer.init()
+
+pygame.mixer.music.load("assets/music/Mesmerizing Galaxy Loop.mp3")
+pygame.mixer.music.set_volume(0.1)
+pygame.mixer.music.play(-1)  # Spela musiken i loop
 
 # Lista för skott
 skott_lista = []
@@ -82,12 +86,23 @@ class AsteroidLiten:
 
     def rita(self, skärm):
         skärm.blit(self.bild, (self.x, self.y))
-        pygame.draw.rect(skärm, (255, 0, 0), self.kollisions_rektangel_asteroid, 2)
+        # pygame.draw.rect(skärm, (255, 0, 0), self.kollisions_rektangel_asteroid, 2)  # Kommenterad för att dölja rektangeln
     
     def kollidera(self, kollisions_rektangel_spelare):
         if self.kollisions_rektangel_asteroid.colliderect(kollisions_rektangel_spelare):
             print("Kollision med asteroid!")
             return True
+        return False
+    
+    def kollidera_med_skott(self, objekt_lista):
+
+        for skott in objekt_lista:
+            if self.kollisions_rektangel_asteroid.colliderect(pygame.Rect(skott.x, skott.y, sprite_skott.get_width(), sprite_skott.get_height())):
+                print("Kollision med skott!")
+                objekt_lista.remove(skott)
+                explosion = [Partiklar(self.x + 20, self.y + 20) for _ in range(100)]
+                expolsioner.append(explosion)
+                return True
         return False
        
 
@@ -150,21 +165,22 @@ class Rymdskepp:
         if not self.exploderat:
             skärm.blit(self.sprite_rymdskepp, (self.rymdskepp_x, self.rymdskepp_y))
             skärm.blit(self.sprite_jetstråle, (self.jetstråle_x, self.jetstråle_y))
-
             pygame.draw.rect(skärm, (255, 0, 0), self.kollisions_rektangel, 2)
         else:
-            self.kollisions_rektangel = pygame.React(0,0,0,0)
+            self.kollisions_rektangel = pygame.Rect(0, 0, 0, 0)  # Säkerställ att rymdskeppet försvinner
 
-    def kollidera(self, rymdskepp):
+    def kollidera(self, asteroid):
         global spelare_1_exploderat  # Global variabel för att hålla reda på om spelaren har exploderat
         if not spelare_1_exploderat:
-            if (self.kollisions_rektangel.colliderect(rymdskepp)):
-                print ("Kollision!")
+            if self.kollisions_rektangel.colliderect(asteroid.kollisions_rektangel_asteroid):
+                print("Kollision!")
                 spelare_1_exploderat = True
                 self.exploderat_x = self.rymdskepp_x
                 self.exploderat_y = self.rymdskepp_y
-                explosion = [Partikel(self.exploderat_x + 60, self.exploderat_y + 46) for _ in range(100)]
-                explosioner.append(explosion)
+                explosion = [Partiklar(self.exploderat_x + 60, self.exploderat_y + 46) for _ in range(100)]
+                expolsioner.append(explosion)  # Fixade stavfel i explosioner-listan
+                return True
+        return False
 
 
 # Lista för asteroider
@@ -186,28 +202,30 @@ while spelet_körs:
     if backgrund_y > skärmens_höjd:
         backgrund_y = 0
 
-    skärm.blit(sprite_spelare, (spelare_x, spelare_y))
-    skärm.blit(sprite_jetstråle, (jetstråle_x, jetstråle_y))
+    if not spelare_1_exploderat:
+        skärm.blit(sprite_spelare, (spelare_x, spelare_y))
+        skärm.blit(sprite_jetstråle, (jetstråle_x, jetstråle_y))
 
     jetstråle_x = spelare_x + (sprite_spelare.get_width() // 2) - (sprite_jetstråle.get_width() // 2)
     jetstråle_y = spelare_y + sprite_spelare.get_height() - (sprite_jetstråle.get_height() // 2)
 
     keys = pygame.key.get_pressed()
-    if keys[pygame.K_a] and spelare_x > 0:
-        spelare_x -= spelarens_hastighet
-        jetstråle_x -= spelarens_hastighet
-    if keys[pygame.K_d] and spelare_x < skärmens_bredd - sprite_spelare.get_width():
-        spelare_x += spelarens_hastighet
-        jetstråle_x += spelarens_hastighet
-    if keys[pygame.K_w] and spelare_y > 0:
-        spelare_y -= spelarens_hastighet
-        jetstråle_y -= spelarens_hastighet
-    if keys[pygame.K_s] and spelare_y < skärmens_höjd - sprite_spelare.get_width() + 26:
-        spelare_y += spelarens_hastighet
-        jetstråle_y += spelarens_hastighet
-    if keys[pygame.K_SPACE] and skott_räknare >= skott_frekvens:
-        skott_lista.append(Skott(spelare_x + 20, spelare_y))
-        skott_räknare = 0
+    if not spelare_1_exploderat:  # Förhindra rörelse efter explosion
+        if keys[pygame.K_a] and spelare_x > 0:
+            spelare_x -= spelarens_hastighet
+            jetstråle_x -= spelarens_hastighet
+        if keys[pygame.K_d] and spelare_x < skärmens_bredd - sprite_spelare.get_width():
+            spelare_x += spelarens_hastighet
+            jetstråle_x += spelarens_hastighet
+        if keys[pygame.K_w] and spelare_y > 0:
+            spelare_y -= spelarens_hastighet
+            jetstråle_y -= spelarens_hastighet
+        if keys[pygame.K_s] and spelare_y < skärmens_höjd - sprite_spelare.get_width() + 26:
+            spelare_y += spelarens_hastighet
+            jetstråle_y += spelarens_hastighet
+        if keys[pygame.K_SPACE] and skott_räknare >= skott_frekvens:
+            skott_lista.append(Skott(spelare_x + 20, spelare_y))
+            skott_räknare = 0
 
     for skott_obj in reversed(skott_lista):
         skott_obj.flytta()
@@ -223,11 +241,15 @@ while spelet_körs:
 
     kollisions_rektangel_spelare = pygame.Rect(spelare_x, spelare_y, sprite_spelare.get_width(), sprite_spelare.get_height())
 
-    pygame.draw.rect(skärm, (255, 0, 0), kollisions_rektangel_spelare, 2)
+    #pygame.draw.rect(skärm, (255, 0, 0), kollisions_rektangel_spelare, 2)
 
     for asteroid_liten in reversed(asteroid_liten_lista):
         asteroid_liten.flytta()
-        asteroid_liten.kollidera(kollisions_rektangel_spelare)
+        if asteroid_liten.kollidera(kollisions_rektangel_spelare):
+            rymdskepp = Rymdskepp()  # Säkerställ att kollision utlöser explosion
+            rymdskepp.kollidera(asteroid_liten)
+        if asteroid_liten.kollidera_med_skott(skott_lista):  # Kontrollera kollision med skott
+            asteroid_liten_lista.remove(asteroid_liten)
         asteroid_liten.rita(skärm)
         if asteroid_liten.y > skärmens_höjd:
             asteroid_liten_lista.remove(asteroid_liten)
@@ -242,10 +264,10 @@ while spelet_körs:
     explosioner = [[p for p in explosion if p.livslängd > 0] for explosion in expolsioner]
     explosioner = [e for e in explosioner if len(e) > 0]
 
-    if (spelare_1_exploderat == True):
+    if spelare_1_exploderat:
         paus += 1    
-        if paus >= 120:
-            spelet_körs = False
+        if paus >= 120:  # Vänta tills explosionseffekten är klar
+            spelet_körs = False  # Avsluta spelet
 
     pygame.display.update()
 
