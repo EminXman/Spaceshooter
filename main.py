@@ -5,6 +5,8 @@ import random
 skärmens_bredd = 800
 skärmens_höjd = 600
 
+pygame.init()  # Säkerställ att pygame är initierat innan något annat används
+
 # Skapa skärmen
 skärm = pygame.display.set_mode((skärmens_bredd, skärmens_höjd))
 pygame.display.set_caption("Space Shooter")
@@ -27,6 +29,21 @@ pygame.mixer.init()
 pygame.mixer.music.load("assets/music/Mesmerizing Galaxy Loop.mp3")
 pygame.mixer.music.set_volume(0.1)
 pygame.mixer.music.play(-1)  # Spela musiken i loop
+
+sound_liten_explosion = pygame.mixer.Sound("assets/sounds/scfi_explosion.wav")
+sound_stor_explosion = pygame.mixer.Sound("assets/sounds/huge_explosion.wav")
+
+sound_liten_explosion.set_volume(0.7)  # Justera volymen för ljudet
+sound_stor_explosion.set_volume(0.9)  # Justera volymen för ljudet
+
+try:
+    font = pygame.font.Font("assets/fonts/ZenDots-Regular.ttf", 74)
+except FileNotFoundError:
+    print("Fonten 'ZenDots-Regular.ttf' hittades inte. Använder standardfont.")
+    font = pygame.font.SysFont(None, 74)  # Använd standardfont om den angivna fonten inte hittas
+
+text_gamover = font.render("GAME OVER", True, (255, 0, 0))
+text_gamover_rect = text_gamover.get_rect(center=(skärmens_bredd // 2, skärmens_höjd // 2))
 
 # Lista för skott
 skott_lista = []
@@ -90,6 +107,7 @@ class AsteroidLiten:
     
     def kollidera(self, kollisions_rektangel_spelare):
         if self.kollisions_rektangel_asteroid.colliderect(kollisions_rektangel_spelare):
+            sound_stor_explosion.play()  # Spela ljudet vid kollision
             print("Kollision med asteroid!")
             return True
         return False
@@ -102,6 +120,7 @@ class AsteroidLiten:
                 objekt_lista.remove(skott)
                 explosion = [Partiklar(self.x + 20, self.y + 20) for _ in range(100)]
                 expolsioner.append(explosion)
+                sound_liten_explosion.play()
                 return True
         return False
        
@@ -179,12 +198,19 @@ class Rymdskepp:
                 self.exploderat_y = self.rymdskepp_y
                 explosion = [Partiklar(self.exploderat_x + 60, self.exploderat_y + 46) for _ in range(100)]
                 expolsioner.append(explosion)  # Fixade stavfel i explosioner-listan
+                sound_stor_explosion.play()
                 return True
         return False
 
 
 # Lista för asteroider
 asteroid_liten_lista = []
+
+def visa_gameover_skärm():
+    skärm.fill((0, 0, 0))  # Fyll skärmen med svart
+    skärm.blit(text_gamover, text_gamover_rect)  # Visa "GAME OVER"-texten
+    pygame.display.update()
+    pygame.time.wait(3000)  # Vänta i 3 sekunder innan spelet avslutas
 
 # Huvudloopen för spelet
 while spelet_körs:
@@ -267,8 +293,9 @@ while spelet_körs:
     if spelare_1_exploderat:
         paus += 1    
         if paus >= 120:  # Vänta tills explosionseffekten är klar
+            visa_gameover_skärm()  # Visa "Game Over"-skärmen
             spelet_körs = False  # Avsluta spelet
-
+    
     pygame.display.update()
 
 pygame.quit()
