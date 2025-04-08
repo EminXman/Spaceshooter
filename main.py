@@ -1,9 +1,9 @@
 import pygame
 import random
 
-# Skärmstorlek (ändrad för att vara längre i höjd och mindre bred)
+# Skärmstorlek och inställningar
 skärmens_bredd = 800
-skärmens_höjd = 800
+skärmens_höjd = 700
 
 pygame.init()  # Säkerställ att pygame är initierat innan något annat används
 
@@ -110,12 +110,19 @@ class AsteroidLiten:
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.hastighet = 4
+        self.hastighet_x = random.uniform(-2, 2)  # Slumpmässig horisontell hastighet
+        self.hastighet_y = 4  # Vertikal hastighet
         self.bild = sprite_ateroid_liten
         self.kollisions_rektangel_asteroid = pygame.Rect(self.x, self.y, self.bild.get_width(), self.bild.get_height())
 
     def flytta(self):
-        self.y += self.hastighet
+        self.x += self.hastighet_x  # Flytta horisontellt
+        self.y += self.hastighet_y  # Flytta vertikalt
+
+        # Begränsa rörelsen inom skärmens bredd
+        if self.x < 0 or self.x > skärmens_bredd - self.bild.get_width():
+            self.hastighet_x *= -1  # Byt riktning om asteroiden når kanten
+
         self.kollisions_rektangel_asteroid.topleft = (self.x, self.y)
 
     def rita(self, skärm):
@@ -205,6 +212,9 @@ class Rymdskepp:
 
             self.kollisions_rektangel.topleft = (self.rymdskepp_x, self.rymdskepp_y)
 
+    def ändra_hastighet(self, ny_hastighet):
+        self.rymdskepp_hastighet = ny_hastighet
+
     def rita(self, skärm):
         if not self.exploderat:
             skärm.blit(self.sprite_rymdskepp, (self.rymdskepp_x, self.rymdskepp_y))
@@ -250,6 +260,9 @@ def visa_gameover_skärm():
 # Skapa instanser för båda spelarna
 spelare_1 = Rymdskepp(spelare_x, spelare_y, sprite_spelare, sprite_jetstråle)
 spelare_2 = Rymdskepp(spelare_2_x, spelare_2_y, sprite_spelare_2)  # Ingen jetmotor för spelare 2
+
+spelare_1.ändra_hastighet(4)  # Sätt hastigheten för spelare 1 till samma som asteroiden
+spelare_2.ändra_hastighet(4)  # Sätt hastigheten för spelare 2 till samma som asteroiden
 
 # Huvudloopen för spelet
 while spelet_körs:
@@ -320,22 +333,29 @@ while spelet_körs:
     skott_räknare_spelare_2 += 1
 
     if asteroid_räknare >= asteroid_frekvens:
-        asteroid_liten_lista.append(AsteroidLiten(random.randint(0, skärmens_bredd - sprite_ateroid_liten.get_width()), 100))
+        asteroid_liten_lista.append(AsteroidLiten(random.randint(0, skärmens_bredd - sprite_ateroid_liten.get_width()), -sprite_ateroid_liten.get_height()))
         asteroid_räknare = 0
 
-    for asteroid_liten in reversed(asteroid_liten_lista):
+    asteroider_att_ta_bort = []  # Lista för att hålla reda på vilka asteroider som ska tas bort
+
+    for asteroid_liten in asteroid_liten_lista:
         asteroid_liten.flytta()
         if asteroid_liten.kollidera(spelare_1.kollisions_rektangel):
             spelare_1.kollidera(asteroid_liten)
         if asteroid_liten.kollidera(spelare_2.kollisions_rektangel):
             spelare_2.kollidera(asteroid_liten)
-        if asteroid_liten.kollidera_med_skott(skott_lista_spelare_1):  # Kontrollera kollision med skott från spelare 1
-            asteroid_liten_lista.remove(asteroid_liten)
-        if asteroid_liten.kollidera_med_skott(skott_lista_spelare_2):  # Kontrollera kollision med skott från spelare 2
-            asteroid_liten_lista.remove(asteroid_liten)
+        if asteroid_liten.kollidera_med_skott(skott_lista_spelare_1):
+            asteroider_att_ta_bort.append(asteroid_liten)  # Lägg till asteroiden i listan för borttagning
+        if asteroid_liten.kollidera_med_skott(skott_lista_spelare_2):
+            asteroider_att_ta_bort.append(asteroid_liten)  # Lägg till asteroiden i listan för borttagning
         asteroid_liten.rita(skärm)
         if asteroid_liten.y > skärmens_höjd:
-            asteroid_liten_lista.remove(asteroid_liten)
+            asteroider_att_ta_bort.append(asteroid_liten)  # Lägg till asteroiden i listan för borttagning
+
+    # Ta bort asteroider efter loopen
+    for asteroid in asteroider_att_ta_bort:
+        if asteroid in asteroid_liten_lista:
+            asteroid_liten_lista.remove(asteroid)
 
     asteroid_räknare += 1  # Öka räknaren varje gång spelet uppdateras
 
