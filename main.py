@@ -2,7 +2,7 @@ import pygame
 import random
 
 # Skärmstorlek och inställningar
-skärmens_bredd = 800
+skärmens_bredd = 850
 skärmens_höjd = 700
 
 pygame.init()  # Säkerställ att pygame är initierat innan något annat används
@@ -12,7 +12,6 @@ skärm = pygame.display.set_mode((skärmens_bredd, skärmens_höjd))
 pygame.display.set_caption("Space Shooter")
 
 # Spelstatus
-spelet_körs = True
 paus = 0
 
 # Ladda bilder
@@ -247,135 +246,217 @@ class Gränsnitt:
 
 gränssnitts_hanteraren = Gränsnitt()
 
+class Meny:
+    """Klass för att hantera huvudmenyn."""
+    def __init__(self, skärm, font, font_poäng, skärmens_bredd, skärmens_höjd):
+        self.skärm = skärm
+        self.font = font
+        self.font_poäng = font_poäng
+        self.skärmens_bredd = skärmens_bredd
+        self.skärmens_höjd = skärmens_höjd
+
+    def visa(self):
+        """Visa huvudmenyn och hantera val."""
+        meny_körs = True
+        while meny_körs:
+            self.skärm.fill((0, 0, 0))  # Fyll skärmen med svart
+            titel_text = self.font.render("SPACE SHOOTER", True, (255, 255, 255))
+            titel_rect = titel_text.get_rect(center=(self.skärmens_bredd // 2, self.skärmens_höjd // 4))
+            self.skärm.blit(titel_text, titel_rect)
+
+            en_spelare_text = self.font_poäng.render("1. Starta spel för 1 spelare", True, (255, 255, 255))
+            en_spelare_rect = en_spelare_text.get_rect(center=(self.skärmens_bredd // 2, self.skärmens_höjd // 2 - 50))
+            self.skärm.blit(en_spelare_text, en_spelare_rect)
+
+            två_spelare_text = self.font_poäng.render("2. Starta spel för 2 spelare", True, (255, 255, 255))
+            två_spelare_rect = två_spelare_text.get_rect(center=(self.skärmens_bredd // 2, self.skärmens_höjd // 2 + 50))
+            self.skärm.blit(två_spelare_text, två_spelare_rect)
+
+            avsluta_text = self.font_poäng.render("3. Avsluta spelet", True, (255, 255, 255))
+            avsluta_rect = avsluta_text.get_rect(center=(self.skärmens_bredd // 2, self.skärmens_höjd // 2 + 150))
+            self.skärm.blit(avsluta_text, avsluta_rect)
+
+            instruktion_text = self.font_poäng.render("Tryck 1, 2 eller 3 för att välja", True, (200, 200, 200))
+            instruktion_rect = instruktion_text.get_rect(center=(self.skärmens_bredd // 2, self.skärmens_höjd - 100))
+            self.skärm.blit(instruktion_text, instruktion_rect)
+
+            pygame.display.update()
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    exit()
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_1:
+                        return 1  # Starta spel för 1 spelare
+                    if event.key == pygame.K_2:
+                        return 2  # Starta spel för 2 spelare
+                    if event.key == pygame.K_3:
+                        pygame.quit()
+                        exit()  # Avsluta spelet
 
 # Lista för asteroider
 asteroid_liten_lista = []
 
 def visa_gameover_skärm():
+    """Visa Game Over-skärmen och gå tillbaka till huvudmenyn."""
     skärm.fill((0, 0, 0))  # Fyll skärmen med svart
     skärm.blit(text_gamover, text_gamover_rect)  # Visa "GAME OVER"-texten
     pygame.display.update()
     pygame.time.wait(3000)  # Vänta i 3 sekunder innan spelet avslutas
+    return True  # Signalera att vi ska tillbaka till huvudmenyn
 
-# Skapa instanser för båda spelarna
-spelare_1 = Rymdskepp(spelare_x, spelare_y, sprite_spelare, sprite_jetstråle)
-spelare_2 = Rymdskepp(spelare_2_x, spelare_2_y, sprite_spelare_2)  # Ingen jetmotor för spelare 2
+def återställ_spelet():
+    """Återställ spelet till startläget."""
+    global asteroid_liten_lista, skott_lista_spelare_1, skott_lista_spelare_2, expolsioner
+    global skott_räknare_spelare_1, skott_räknare_spelare_2, asteroid_räknare, paus
 
-spelare_1.ändra_hastighet(4)  # Sätt hastigheten för spelare 1 till samma som asteroiden
-spelare_2.ändra_hastighet(4)  # Sätt hastigheten för spelare 2 till samma som asteroiden
+    asteroid_liten_lista = []  # Rensa listan med asteroider
+    skott_lista_spelare_1 = []  # Rensa skott för spelare 1
+    skott_lista_spelare_2 = []  # Rensa skott för spelare 2
+    expolsioner = []  # Rensa explosioner
 
-# Huvudloopen för spelet
-while spelet_körs:
-    skärm.fill((0, 0, 30))
+    skott_räknare_spelare_1 = 0  # Återställ skotträknare för spelare 1
+    skott_räknare_spelare_2 = 0  # Återställ skotträknare för spelare 2
+    asteroid_räknare = 0  # Återställ asteroidräknaren
+    paus = 0  # Återställ pausvariabeln
 
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            spelet_körs = False
+# Huvudprogram
+meny = Meny(skärm, font, font_poäng, skärmens_bredd, skärmens_höjd)
 
-    skärm.blit(backgrund_mörkblå, (0, 0))
-    skärm.blit(backgrund_stjärnor, (0, backgrund_y))
-    skärm.blit(backgrund_stjärnor, (0, backgrund_y - skärmens_höjd))
+while True:
+    antal_spelare = meny.visa()  # Visa menyn och få antalet spelare
 
-    backgrund_y += 2
-    if backgrund_y > skärmens_höjd:
-        backgrund_y = 0
+    # Återställ spelet innan det startas
+    återställ_spelet()
 
-    keys = pygame.key.get_pressed()
+    # Skapa instanser för spelare baserat på valet
+    spelare_1 = Rymdskepp(spelare_x, spelare_y, sprite_spelare, sprite_jetstråle)
+    spelare_2 = None
+    if antal_spelare == 2:
+        spelare_2 = Rymdskepp(spelare_2_x, spelare_2_y, sprite_spelare_2)  # Ingen jetmotor för spelare 2
 
-    # Rörelse för spelare 1 (WASD)
-    if not spelare_1.exploderat:
-        if keys[pygame.K_a]:
-            spelare_1.flytta("vänster")
-        if keys[pygame.K_d]:
-            spelare_1.flytta("höger")
-        if keys[pygame.K_w]:
-            spelare_1.flytta("upp")
-        if keys[pygame.K_s]:
-            spelare_1.flytta("ner")
-        if keys[pygame.K_SPACE] and skott_räknare_spelare_1 >= skott_frekvens:
-            skott_lista_spelare_1.append(Skott(spelare_1.rymdskepp_x + 20, spelare_1.rymdskepp_y))
-            skott_räknare_spelare_1 = 0
+    spelare_1.ändra_hastighet(4)  # Sätt hastigheten för spelare 1 till samma som asteroiden
+    if spelare_2:
+        spelare_2.ändra_hastighet(4)  # Sätt hastigheten för spelare 2 till samma som asteroiden
 
-    # Rörelse för spelare 2 (piltangenter)
-    if not spelare_2.exploderat:
-        if keys[pygame.K_LEFT]:
-            spelare_2.flytta("vänster")
-        if keys[pygame.K_RIGHT]:
-            spelare_2.flytta("höger")
-        if keys[pygame.K_UP]:
-            spelare_2.flytta("upp")
-        if keys[pygame.K_DOWN]:
-            spelare_2.flytta("ner")
-        if keys[pygame.K_k] and skott_räknare_spelare_2 >= skott_frekvens:
-            skott_lista_spelare_2.append(Skott(spelare_2.rymdskepp_x + 20, spelare_2.rymdskepp_y))
-            skott_räknare_spelare_2 = 0
+    # Huvudloopen för spelet
+    spelet_körs = True
+    while spelet_körs:
+        skärm.fill((0, 0, 30))
 
-    # Rita spelare
-    spelare_1.rita(skärm)
-    spelare_2.rita(skärm)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
 
-    # Hantera skott för spelare 1
-    for skott_obj in reversed(skott_lista_spelare_1):
-        skott_obj.flytta()
-        skott_obj.rita(skärm)
-        if skott_obj.y < -100:
-            skott_lista_spelare_1.remove(skott_obj)
+        skärm.blit(backgrund_mörkblå, (0, 0))
+        skärm.blit(backgrund_stjärnor, (0, backgrund_y))
+        skärm.blit(backgrund_stjärnor, (0, backgrund_y - skärmens_höjd))
 
-    # Hantera skott för spelare 2
-    for skott_obj in reversed(skott_lista_spelare_2):
-        skott_obj.flytta()
-        skott_obj.rita(skärm)
-        if skott_obj.y < -100:
-            skott_lista_spelare_2.remove(skott_obj)
+        backgrund_y += 2
+        if backgrund_y > skärmens_höjd:
+            backgrund_y = 0
 
-    # Öka räknarna för skott för varje spelare
-    skott_räknare_spelare_1 += 1
-    skott_räknare_spelare_2 += 1
+        keys = pygame.key.get_pressed()
 
-    if asteroid_räknare >= asteroid_frekvens:
-        asteroid_liten_lista.append(AsteroidLiten(random.randint(0, skärmens_bredd - sprite_ateroid_liten.get_width()), -sprite_ateroid_liten.get_height()))
-        asteroid_räknare = 0
+        # Rörelse för spelare 1 (WASD)
+        if not spelare_1.exploderat:
+            if keys[pygame.K_a]:
+                spelare_1.flytta("vänster")
+            if keys[pygame.K_d]:
+                spelare_1.flytta("höger")
+            if keys[pygame.K_w]:
+                spelare_1.flytta("upp")
+            if keys[pygame.K_s]:
+                spelare_1.flytta("ner")
+            if keys[pygame.K_SPACE] and skott_räknare_spelare_1 >= skott_frekvens:
+                skott_lista_spelare_1.append(Skott(spelare_1.rymdskepp_x + 20, spelare_1.rymdskepp_y))
+                skott_räknare_spelare_1 = 0
 
-    asteroider_att_ta_bort = []  # Lista för att hålla reda på vilka asteroider som ska tas bort
+        # Rörelse för spelare 2 (piltangenter) om det är ett 2-spelarläge
+        if spelare_2 and not spelare_2.exploderat:
+            if keys[pygame.K_LEFT]:
+                spelare_2.flytta("vänster")
+            if keys[pygame.K_RIGHT]:
+                spelare_2.flytta("höger")
+            if keys[pygame.K_UP]:
+                spelare_2.flytta("upp")
+            if keys[pygame.K_DOWN]:
+                spelare_2.flytta("ner")
+            if keys[pygame.K_k] and skott_räknare_spelare_2 >= skott_frekvens:
+                skott_lista_spelare_2.append(Skott(spelare_2.rymdskepp_x + 20, spelare_2.rymdskepp_y))
+                skott_räknare_spelare_2 = 0
 
-    for asteroid_liten in asteroid_liten_lista:
-        asteroid_liten.flytta()
-        if asteroid_liten.kollidera(spelare_1.kollisions_rektangel):
-            spelare_1.kollidera(asteroid_liten)
-        if asteroid_liten.kollidera(spelare_2.kollisions_rektangel):
-            spelare_2.kollidera(asteroid_liten)
-        if asteroid_liten.kollidera_med_skott(skott_lista_spelare_1):
-            asteroider_att_ta_bort.append(asteroid_liten)  # Lägg till asteroiden i listan för borttagning
-        if asteroid_liten.kollidera_med_skott(skott_lista_spelare_2):
-            asteroider_att_ta_bort.append(asteroid_liten)  # Lägg till asteroiden i listan för borttagning
-        asteroid_liten.rita(skärm)
-        if asteroid_liten.y > skärmens_höjd:
-            asteroider_att_ta_bort.append(asteroid_liten)  # Lägg till asteroiden i listan för borttagning
+        # Rita spelare
+        spelare_1.rita(skärm)
+        if spelare_2:
+            spelare_2.rita(skärm)
 
-    # Ta bort asteroider efter loopen
-    for asteroid in asteroider_att_ta_bort:
-        if asteroid in asteroid_liten_lista:
-            asteroid_liten_lista.remove(asteroid)
+        # Hantera skott för spelare 1
+        for skott_obj in reversed(skott_lista_spelare_1):
+            skott_obj.flytta()
+            skott_obj.rita(skärm)
+            if skott_obj.y < -100:
+                skott_lista_spelare_1.remove(skott_obj)
 
-    asteroid_räknare += 1  # Öka räknaren varje gång spelet uppdateras
+        # Hantera skott för spelare 2
+        if spelare_2:
+            for skott_obj in reversed(skott_lista_spelare_2):
+                skott_obj.flytta()
+                skott_obj.rita(skärm)
+                if skott_obj.y < -100:
+                    skott_lista_spelare_2.remove(skott_obj)
 
-    for explosion in expolsioner:
-        for partikel in explosion:
-            partikel.uppdatera()
-            partikel.rita(skärm)
+        # Öka räknarna för skott för varje spelare
+        skott_räknare_spelare_1 += 1
+        if spelare_2:
+            skott_räknare_spelare_2 += 1
 
-    explosioner = [[p for p in explosion if p.livslängd > 0] for explosion in expolsioner]
-    explosioner = [e for e in explosioner if len(e) > 0]
+        if asteroid_räknare >= asteroid_frekvens:
+            asteroid_liten_lista.append(AsteroidLiten(random.randint(0, skärmens_bredd - sprite_ateroid_liten.get_width()), -sprite_ateroid_liten.get_height()))
+            asteroid_räknare = 0
 
-    if spelare_1.exploderat and spelare_2.exploderat:
-        paus += 1    
-        if paus >= 120:  # Vänta tills explosionseffekten är klar
-            visa_gameover_skärm()  # Visa "Game Over"-skärmen
-            spelet_körs = False  # Avsluta spelet
-    
-    score_text = font_poäng.render(f"Poäng: {gränssnitts_hanteraren.poäng}", True, (255, 255, 255))
-    skärm.blit(score_text, (10, 10))  # Visa poängen i det övre vänstra hörnet
-    
-    pygame.display.update()
+        asteroider_att_ta_bort = []  # Lista för att hålla reda på vilka asteroider som ska tas bort
+
+        for asteroid_liten in asteroid_liten_lista:
+            asteroid_liten.flytta()
+            if asteroid_liten.kollidera(spelare_1.kollisions_rektangel):
+                spelare_1.kollidera(asteroid_liten)
+            if spelare_2 and asteroid_liten.kollidera(spelare_2.kollisions_rektangel):
+                spelare_2.kollidera(asteroid_liten)
+            if asteroid_liten.kollidera_med_skott(skott_lista_spelare_1):
+                asteroider_att_ta_bort.append(asteroid_liten)  # Lägg till asteroiden i listan för borttagning
+            if spelare_2 and asteroid_liten.kollidera_med_skott(skott_lista_spelare_2):
+                asteroider_att_ta_bort.append(asteroid_liten)  # Lägg till asteroiden i listan för borttagning
+            asteroid_liten.rita(skärm)
+            if asteroid_liten.y > skärmens_höjd:
+                asteroider_att_ta_bort.append(asteroid_liten)  # Lägg till asteroiden i listan för borttagning
+
+        # Ta bort asteroider efter loopen
+        for asteroid in asteroider_att_ta_bort:
+            if asteroid in asteroid_liten_lista:
+                asteroid_liten_lista.remove(asteroid)
+
+        asteroid_räknare += 1  # Öka räknaren varje gång spelet uppdateras
+
+        for explosion in expolsioner:
+            for partikel in explosion:
+                partikel.uppdatera()
+                partikel.rita(skärm)
+
+        explosioner = [[p for p in explosion if p.livslängd > 0] for explosion in expolsioner]
+        explosioner = [e for e in explosioner if len(e) > 0]
+
+        if spelare_1.exploderat and (not spelare_2 or spelare_2.exploderat):
+            paus += 1    
+            if paus >= 120:  # Vänta tills explosionseffekten är klar
+                if visa_gameover_skärm():  # Visa "Game Over"-skärmen och gå tillbaka till menyn
+                    spelet_körs = False  # Avsluta spelet
+        
+        score_text = font_poäng.render(f"Poäng: {gränssnitts_hanteraren.poäng}", True, (255, 255, 255))
+        skärm.blit(score_text, (10, 10))  # Visa poängen i det övre vänstra hörnet
+        
+        pygame.display.update()
 
 pygame.quit()
